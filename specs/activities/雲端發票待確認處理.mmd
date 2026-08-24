@@ -1,0 +1,36 @@
+%% ═══ 區段一：Activity 標頭與 Actor 宣告 ═══
+%% [ACTIVITY] 雲端發票待確認處理
+%% [ACTOR] 使用者 -> {specs/actors/使用者.md}
+
+flowchart TD
+
+%% ═══ 區段二：節點定義 ═══
+
+    Start(( ))
+
+    %% [STEP:1] @使用者 {features/cloud-invoices/查詢待確認雲端發票清單.feature}
+    S1["@使用者<br/>進入「設定」分頁的雲端發票子頁，查看待確認清單（每筆附上相似的既有交易資訊）與同步健康狀態"]
+
+    %% [DECISION:1a] 使用者判斷這筆是否為已經手動記過的同一筆消費？
+    D1a{"是否已手動記過？"}
+
+    %% [BRANCH:1a:是] @使用者 {features/cloud-invoices/處理待確認雲端發票.feature}
+    B1a_dup["@使用者<br/>標記為「重複，略過」，不建立交易"]
+
+    %% [BRANCH:1a:否] @使用者 {features/cloud-invoices/處理待確認雲端發票.feature}
+    B1a_new["@使用者<br/>確認為新交易，系統建立支出交易"]
+
+    %% [MERGE:1a]
+    M1a(( ))
+
+    End((( )))
+
+%% ═══ 區段三：邊定義 ═══
+
+    Start --> S1
+    S1 --> D1a
+    D1a -- 是 --> B1a_dup
+    D1a -- 否 --> B1a_new
+    B1a_dup --> M1a
+    B1a_new --> M1a
+    M1a --> End

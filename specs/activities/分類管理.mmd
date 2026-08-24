@@ -1,0 +1,36 @@
+%% ═══ 區段一：Activity 標頭與 Actor 宣告 ═══
+%% [ACTIVITY] 分類管理
+%% [ACTOR] 使用者 -> {specs/actors/使用者.md}
+
+flowchart TD
+
+%% ═══ 區段二：節點定義 ═══
+
+    Start(( ))
+
+    %% [STEP:1] @使用者 {features/categories/查詢分類列表.feature}
+    S1["@使用者<br/>查詢分類列表（記帳時瀏覽可選分類）"]
+
+    %% [DECISION:1a] 使用者接下來要做什麼？
+    D1a{"使用者接下來要做什麼？"}
+
+    %% [BRANCH:1a:選用清單中的分類]
+    B1a_pick["直接選用清單中的分類"]
+
+    %% [BRANCH:1a:新增分類] @使用者 {features/categories/建立分類.feature}
+    B1a_new["@使用者<br/>新增分類"]
+
+    %% [MERGE:1a]
+    M1a(( ))
+
+    End((( )))
+
+%% ═══ 區段三：邊定義 ═══
+
+    Start --> S1
+    S1 --> D1a
+    D1a -- 選用清單中的分類 --> B1a_pick
+    D1a -- 新增分類 --> B1a_new
+    B1a_pick --> M1a
+    B1a_new --> M1a
+    M1a --> End

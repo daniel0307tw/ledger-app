@@ -1,0 +1,36 @@
+%% ═══ 區段一：Activity 標頭與 Actor 宣告 ═══
+%% [ACTIVITY] 資產總覽查詢
+%% [ACTOR] 使用者 -> {specs/actors/使用者.md}
+
+flowchart TD
+
+%% ═══ 區段二：節點定義 ═══
+
+    Start(( ))
+
+    %% [STEP:1] @使用者 {features/assets/查詢資產總覽.feature}
+    S1["@使用者<br/>進入「資產」分頁，查詢資產總覽（系統彙整現金/信用卡帳戶餘額 + 呼叫 stock_analyzer 唯讀 API 取得股票市值，依 TWD/USD 分幣別小計、不做匯率換算）"]
+
+    %% [DECISION:1a] 股票資料來源（stock_analyzer API）查詢是否成功？
+    D1a{"股票資料來源查詢是否成功？"}
+
+    %% [BRANCH:1a:成功] @使用者 {features/assets/查詢資產總覽.feature}
+    B1a_ok["@使用者<br/>看到完整資產總覽：現金/信用卡總額 + 股票個股明細（symbol/name/市值/損益）+ 分幣別小計"]
+
+    %% [BRANCH:1a:失敗] @使用者 {features/assets/查詢資產總覽.feature}
+    B1a_fail["@使用者<br/>看到現金/信用卡總額正常顯示，股票區塊顯示查詢失敗提示（partial failure，非整頁失敗）"]
+
+    %% [MERGE:1a]
+    M1a(( ))
+
+    End((( )))
+
+%% ═══ 區段三：邊定義 ═══
+
+    Start --> S1
+    S1 --> D1a
+    D1a -- 成功 --> B1a_ok
+    D1a -- 失敗 --> B1a_fail
+    B1a_ok --> M1a
+    B1a_fail --> M1a
+    M1a --> End

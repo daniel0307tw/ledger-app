@@ -1,0 +1,45 @@
+%% ═══ 區段一：Activity 標頭與 Actor 宣告 ═══
+%% [ACTIVITY] 雲端發票同步
+%% [ACTOR] Hermes -> {specs/actors/Hermes.md}
+
+flowchart TD
+
+%% ═══ 區段二：節點定義 ═══
+
+    Start(( ))
+
+    %% [STEP:1] @Hermes {features/cloud-invoices/同步雲端發票.feature}
+    S1["@Hermes<br/>傳送一批已抓取到的雲端發票資料（發票字軌+號碼、日期、總金額、賣方名稱、品項摘要）"]
+
+    %% [DECISION:1a] 這張發票的字軌+號碼是否已經同步過（cloud_invoice 表既有紀錄）？
+    D1a{"發票號碼是否已同步過？"}
+
+    %% [BRANCH:1a:已同步] @Hermes {features/cloud-invoices/同步雲端發票.feature}
+    B1a_dup["@Hermes<br/>收到「略過」結果（此發票已處理過，不重複建立交易）"]
+
+    %% [DECISION:1b] 金額/日期是否與既有交易相似（疑似使用者已手動記過同一筆消費）？
+    D1b{"金額/日期是否與既有交易相似？"}
+
+    %% [BRANCH:1b:相似] @Hermes {features/cloud-invoices/同步雲端發票.feature}
+    B1b_similar["@Hermes<br/>收到「待確認」結果，該筆存入 cloud_invoice 表（status=pending_review）。Hermes 可在對話中直接問使用者，使用者也可以之後在「設定」分頁的雲端發票子頁集中處理，見另一 Activity「雲端發票待確認處理」"]
+
+    %% [BRANCH:1b:不相似] @Hermes {features/cloud-invoices/同步雲端發票.feature}
+    B1b_new["@Hermes<br/>收到「已建立」結果（系統自動建立一筆 ledger_transaction，帳戶預設現金、分類猜不出時預設日常用品）"]
+
+    %% [MERGE:1]
+    M1(( ))
+
+    End((( )))
+
+%% ═══ 區段三：邊定義 ═══
+
+    Start --> S1
+    S1 --> D1a
+    D1a -- 已同步 --> B1a_dup
+    D1a -- 未同步 --> D1b
+    D1b -- 相似 --> B1b_similar
+    D1b -- 不相似 --> B1b_new
+    B1a_dup --> M1
+    B1b_similar --> M1
+    B1b_new --> M1
+    M1 --> End

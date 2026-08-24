@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  /* PWA 獨立模式下，往上滑到頂/往下滑到底時 iOS Safari 預設會有橡皮筋彈回效果，
+     感覺像「拉一半的下拉刷新」卡住彈回去。這裡關閉該效果讓捲動邊界更像原生 App。 */
+  overscroll-behavior-y: none;
+}
+
+body {
+  background-color: #0a0c10;
+  color: #f3f5f8;
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100dvh;
+  background-image:
+    radial-gradient(ellipse 640px 420px at 12% -6%, rgba(46, 230, 166, 0.07), transparent 70%),
+    radial-gradient(ellipse 560px 380px at 100% 4%, rgba(255, 106, 94, 0.045), transparent 70%);
+  background-repeat: no-repeat, no-repeat;
+  background-attachment: fixed, fixed;
+}
+
+input,
+select,
+textarea,
+button {
+  font-family: inherit;
+}
+
+/* Safari 的 date/select 原生元件在暗色背景下仍會用亮色 UI，這裡強制走 dark color-scheme */
+input,
+select {
+  color-scheme: dark;
+}
+
+::selection {
+  background: rgba(46, 230, 166, 0.35);
+  color: #f3f5f8;
+}
+
+/* iOS PWA: 避免點擊時出現藍色高亮 */
+* {
+  -webkit-tap-highlight-color: transparent;
+}

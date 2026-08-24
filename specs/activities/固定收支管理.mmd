@@ -1,0 +1,40 @@
+%% ═══ 區段一：Activity 標頭與 Actor 宣告 ═══
+%% [ACTIVITY] 固定收支管理
+%% [ACTOR] 使用者 -> {specs/actors/使用者.md}
+
+flowchart TD
+
+%% ═══ 區段二：節點定義 ═══
+
+    Start(( ))
+
+    %% [STEP:1] @使用者 {features/recurring-transactions/建立固定收支規則.feature}
+    S1["@使用者<br/>進入「設定」分頁的固定收支子頁，建立一筆固定收支規則（頻率/金額/分類/帳戶/類型/起始日期/提前生成期數）"]
+
+    %% [STEP:2] @使用者 {features/recurring-transactions/查詢固定收支規則列表.feature}
+    S2["@使用者<br/>查看所有固定收支規則列表（含下次生成日期）"]
+
+    %% [DECISION:2a] 使用者想做什麼？
+    D2a{"使用者選擇的操作"}
+
+    %% [BRANCH:2a:編輯] @使用者 {features/recurring-transactions/編輯固定收支規則.feature}
+    B2a_edit["@使用者<br/>編輯規則（例如改金額），已生成的未來交易不受影響"]
+
+    %% [BRANCH:2a:刪除] @使用者 {features/recurring-transactions/刪除固定收支規則.feature}
+    B2a_delete["@使用者<br/>刪除規則，已生成的未來交易保留"]
+
+    %% [MERGE:2a]
+    M2a(( ))
+
+    End((( )))
+
+%% ═══ 區段三：邊定義 ═══
+
+    Start --> S1
+    S1 --> S2
+    S2 --> D2a
+    D2a -- 編輯 --> B2a_edit
+    D2a -- 刪除 --> B2a_delete
+    B2a_edit --> M2a
+    B2a_delete --> M2a
+    M2a --> End

@@ -1,0 +1,68 @@
+%% ═══ 區段一：Activity 標頭與 Actor 宣告 ═══
+%% [ACTIVITY] 收支紀錄管理與行事曆檢視
+%% [ACTOR] 使用者 -> {specs/actors/使用者.md}
+
+flowchart TD
+
+%% ═══ 區段二：節點定義 ═══
+
+    Start(( ))
+
+    %% [STEP:1] @使用者 {features/transactions/查詢收支紀錄.feature}
+    S1["@使用者<br/>查詢收支紀錄（依日期區間，行事曆檢視）"]
+
+    %% [DECISION:1a] 使用者接下來要做什麼？
+    D1a{"使用者接下來要做什麼？"}
+
+    %% [BRANCH:1a:新增一筆] @使用者 {features/transactions/新增收支紀錄.feature}
+    B1a_new["@使用者<br/>新增收支紀錄"]
+
+    %% [BRANCH:1a:編輯既有紀錄] @使用者 {features/transactions/編輯收支紀錄.feature}
+    B1a_edit["@使用者<br/>編輯收支紀錄"]
+
+    %% [BRANCH:1a:刪除既有紀錄] @使用者 {features/transactions/刪除收支紀錄.feature}
+    B1a_delete["@使用者<br/>刪除收支紀錄"]
+
+    %% [BRANCH:1a:僅檢視不操作]
+    B1a_view["僅檢視，不做任何操作"]
+
+    %% [BRANCH:1a:查詢待收回代墊款清單] @使用者 {features/transactions/查詢待收回代墊款清單.feature}
+    B1a_pending["@使用者<br/>查詢待收回代墊款清單"]
+
+    %% [DECISION:1b] 使用者對清單中的代墊款接下來要做什麼？
+    D1b{"使用者對清單中的代墊款接下來要做什麼？"}
+
+    %% [BRANCH:1b:確認收到還款] @使用者 {features/transactions/確認收到還款.feature}
+    B1b_settle["@使用者<br/>確認收到還款"]
+
+    %% [BRANCH:1b:僅檢視不操作]
+    B1b_view["僅檢視，不做任何操作"]
+
+    %% [MERGE:1b]
+    M1b(( ))
+
+    %% [MERGE:1a]
+    M1a(( ))
+
+    End((( )))
+
+%% ═══ 區段三：邊定義 ═══
+
+    Start --> S1
+    S1 --> D1a
+    D1a -- 新增一筆 --> B1a_new
+    D1a -- 編輯既有紀錄 --> B1a_edit
+    D1a -- 刪除既有紀錄 --> B1a_delete
+    D1a -- 僅檢視不操作 --> B1a_view
+    D1a -- 查詢待收回代墊款清單 --> B1a_pending
+    B1a_pending --> D1b
+    D1b -- 確認收到還款 --> B1b_settle
+    D1b -- 僅檢視不操作 --> B1b_view
+    B1b_settle --> M1b
+    B1b_view --> M1b
+    M1b --> M1a
+    B1a_new --> M1a
+    B1a_edit --> M1a
+    B1a_delete --> M1a
+    B1a_view --> M1a
+    M1a --> End

@@ -1,0 +1,136 @@
+Table account {
+  id    integer      [pk, increment]
+  name  varchar      [not null, note: '使用者自訂帳戶名稱，不限定類型清單，不強制唯一']
+  type  account_type [not null, note: '既有 4 個帳戶（永豐銀行、新光銀行、中國信託、永豐營業部）migration 時一律設為 一般帳戶；純粹決定畫面標籤文字（一般帳戶顯示「餘額」，信用卡顯示「未繳金額」），不影響餘額計算公式']
+
+  Note: '記帳系統的帳戶（現金、銀行帳戶等，名稱自訂）'
+}
+
+Table category {
+  id    integer       [pk, increment]
+  name  varchar       [not null, note: '使用者自訂分類名稱，不強制唯一，比照 account.name 慣例']
+  type  category_type [not null, note: '既有 17 個預設分類 migration 時一律設為 支出；新增 4 個預設分類：薪資/獎金/投資=收入，校正回歸=皆可（因既有支出情境已有「校正回歸」，收入情境要求同一分類也適用，標記為皆可而非重複建立同名分類）']
+
+  Note: '收支分類。系統預先建立 20 筆預設分類（17 筆支出：餐飲、日常用品、交通、水電瓦斯、電話網路、居家、服飾、汽車、娛樂、美容美髮、交際應酬、學習深造、保險、稅金、醫療、校正回歸、轉帳手續費；加上 3 筆收入：薪資、獎金、投資；「校正回歸」為皆可，計入支出情境的 17 筆中，不重複計數），使用者可再自行新增（新增時 type 由前端依當下記帳表單所選的收支類型帶入）；供 ledger_transaction 參照，未來預算報表可依此分組統計'
+}
+
+Table ledger_transaction {
+  id                 integer    [pk, increment]
+  date               date       [not null]
+  amount             decimal    [not null, note: 'must be > 0']
+  category_id        integer    [note: '一般收支紀錄必填；is_transfer=true 的轉帳紀錄本身無分類意義（資產搬移非分類收支），為 null。此欄位的必填性由 service 層依 is_transfer 決定，非 DB 層 not null 約束']
+  note               varchar    [note: '選填']
+  account_id         integer    [not null]
+  type               transaction_type  [not null]
+  is_transfer        boolean    [not null, default: false, note: '是否為帳戶間轉帳產生的紀錄，為 true 時不計入一般收支報表']
+  transfer_group_id  varchar    [note: '同一次轉帳產生的一筆轉出+一筆轉入共用同一個值，用來關聯成對的兩筆紀錄；非轉帳紀錄為 null']
+  sync_status        sync_status_enum  [not null, default: 'pending']
+  cash_position_id   integer    [note: '同步成功後對應到 stock_analyzer CashPosition 資料表的 id；同步失敗或尚未同步時為 null。這是外部系統的 id，非本資料庫的 FK']
+  source_recurring_transaction_id  integer  [note: '若此筆是由固定收支規則生成，指向 recurring_transaction.id；手動建立或雲端發票同步建立的交易為 null。新增原因：「補生成固定收支交易」規則需要查出某規則已生成哪些未來交易，才能算出還缺幾期，非單純追溯用途']
+  advance_payment_amount  decimal  [note: '這筆交易金額（amount）中屬於代墊款的部分，僅 type=支出 的交易可設定，必須 > 0 且 ≤ amount（等於 amount 時代表整筆都是代墊款，是這個欄位的特例，不需要另外的旗標）；null 代表這筆交易不含代墊款成分。取代早期設計中單純 boolean 的 is_advance_payment（該版本無法表達「一筆交易裡有一部分是自己的消費、一部分是幫別人代墊」這種混合情境，例如聚餐總額 4000、自己吃了 1000、代墊 3000）']
+  advance_payment_status  advance_payment_status_enum  [note: '僅 advance_payment_amount 有值時有意義，pending=尚未收到還款（amount 整筆仍計入支出/預算/報表）、settled=已收到還款（計入支出/預算/報表的有效金額變成 amount − advance_payment_amount，不是排除整筆）；advance_payment_amount 為 null 的交易本欄位為 null']
+  settlement_transaction_id  integer  [note: '指向「確認收到還款」時建立的那筆收入交易（ledger_transaction.id），金額固定等於 advance_payment_amount；僅 advance_payment_status=settled 時有值，比照 source_recurring_transaction_id 的單向 FK 模式（非 transfer_group_id 的無 FK 字串關聯，因為代墊款只需從支出這端查得到對應的還款交易，不需要反向查詢）']
+
+  Note: '收支紀錄；type 決定同步到 stock_analyzer CashPosition 時是 Withdraw 還是 Deposit'
+}
+
+Table cloud_invoice {
+  id                integer                 [pk, increment]
+  invoice_number    varchar                 [not null, unique, note: '發票字軌+號碼，例如 AB-12345678，政府核發之唯一識別碼']
+  invoice_date      date                    [not null]
+  amount            decimal                 [not null]
+  seller_name       varchar                 [not null]
+  item_summary      varchar                 [note: '品項摘要，選填；只存表頭摘要，不建品項明細表']
+  status            cloud_invoice_status    [not null, default: 'pending_review']
+  transaction_id    integer                 [note: 'status=synced 時對應建立的 ledger_transaction.id；pending_review/skipped 時為 null']
+  created_at        timestamp               [not null, default: `now()`]
+
+  Note: '雲端發票同步狀態記錄。由 Hermes 端 Playwright 自動化抓取財政部電子發票整合服務平台後，呼叫 ledger-app API 寫入；invoice_number 的 unique 約束是去重的核心機制'
+}
+
+Table recurring_transaction {
+  id               integer                     [pk, increment]
+  frequency        recurring_frequency         [not null]
+  amount           decimal                     [not null, note: 'must be > 0']
+  category_id      integer                     [not null]
+  account_id       integer                     [not null]
+  type             transaction_type            [not null]
+  note             varchar                     [note: '選填']
+  start_date       date                        [not null]
+  generate_count   integer                     [not null, note: '使用者指定的提前生成期數；建立規則時立即生成這麼多筆未來 ledger_transaction']
+  status           recurring_transaction_status [not null, default: '啟用']
+  created_at       timestamp                   [not null, default: `now()`]
+
+  Note: '固定收支規則。建立時立即生成 generate_count 筆未來日期的 ledger_transaction（source_recurring_transaction_id 指回本表）；編輯/刪除規則不影響已生成的交易，只影響之後'
+}
+
+Table budget {
+  id              integer       [pk, increment]
+  scope           budget_scope  [not null]
+  category_id     integer       [note: 'scope=分類預算 時必填；scope=總預算 時為 null。「同一分類不可重複建立、總預算全系統只能一筆」由 service 層驗證，非 DB constraint（比照既有 ledger_transaction.category_id 必填性由 service 層依情境決定的慣例——DB 唯一索引無法表達「NULL 只能有一筆」這種語意）']
+  monthly_amount  decimal       [not null, note: 'must be > 0']
+  created_at      timestamp     [not null, default: `now()`]
+
+  Note: '預算設定（總預算或分類預算），每月金額上限；執行狀況由 service 層即時比對當月 ledger_transaction 計算，不落地儲存'
+}
+
+Enum transaction_type {
+  收入
+  支出
+}
+
+Enum category_type {
+  收入
+  支出
+  皆可  [note: '收入、支出情境的分類選擇器都會顯示']
+}
+
+Enum account_type {
+  一般帳戶
+  信用卡
+}
+
+Enum sync_status_enum {
+  pending  [note: '尚未同步或待重試']
+  synced   [note: '已成功同步至 CashPosition']
+  failed   [note: '同步失敗，等待下次重試']
+}
+
+Enum cloud_invoice_status {
+  pending_review  [note: '發票號碼未同步過，但金額/日期與既有交易相似，待使用者確認']
+  synced          [note: '已自動或經使用者確認後建立為 ledger_transaction']
+  skipped         [note: '使用者確認為重複（已手動記過），不建立交易']
+}
+
+Enum recurring_frequency {
+  每天
+  每週
+  每月
+  每季
+  每年
+  每三年
+}
+
+Enum recurring_transaction_status {
+  啟用
+  停用
+}
+
+Enum budget_scope {
+  總預算
+  分類預算
+}
+
+Enum advance_payment_status_enum {
+  pending  [note: '尚未收到還款，仍計入支出/預算/報表']
+  settled  [note: '已收到還款，排除在支出/預算/報表加總之外']
+}
+
+Ref: ledger_transaction.account_id > account.id
+Ref: ledger_transaction.category_id > category.id
+Ref: ledger_transaction.source_recurring_transaction_id > recurring_transaction.id
+Ref: ledger_transaction.settlement_transaction_id > ledger_transaction.id
+Ref: cloud_invoice.transaction_id > ledger_transaction.id
+Ref: recurring_transaction.category_id > category.id
+Ref: recurring_transaction.account_id > account.id
+Ref: budget.category_id > category.id

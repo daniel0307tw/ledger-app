@@ -1,0 +1,872 @@
+openapi: 3.0.0
+info:
+  title: ledger-app
+  version: 1.0.0
+
+paths:
+  /api/transactions:
+    post:
+      operationId: createTransaction
+      summary: 新增收支紀錄
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionInput'
+      responses:
+        '201': { $ref: '#/components/schemas/TransactionResponse' }
+        '400': { $ref: '#/components/schemas/ErrorResponse' }
+        '404': { $ref: '#/components/schemas/ErrorResponse' }
+        '422': { $ref: '#/components/schemas/ErrorResponse' }
+    get:
+      operationId: listTransactions
+      summary: 查詢收支紀錄
+      parameters:
+        - name: startDate
+          in: query
+          required: true
+          schema: { type: string, format: date }
+        - name: endDate
+          in: query
+          required: true
+          schema: { type: string, format: date }
+      responses:
+        '200': { $ref: '#/components/schemas/TransactionListResponse' }
+        '400': { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/transactions/{id}/settle-advance-payment:
+    post:
+      operationId: settleAdvancePayment
+      summary: 確認收到還款
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SettleAdvancePaymentInput'
+      responses:
+        '200': { $ref: '#/components/schemas/SettleAdvancePaymentResponse' }
+        '400': { $ref: '#/components/schemas/ErrorResponse' }
+        '404': { $ref: '#/components/schemas/ErrorResponse' }
+        '422': { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/transactions/pending-advance-payments:
+    get:
+      operationId: listPendingAdvancePayments
+      summary: 查詢待收回代墊款清單
+      responses:
+        '200': { $ref: '#/components/schemas/TransactionListResponse' }
+
+  /api/transactions/{id}:
+    put:
+      operationId: updateTransaction
+      summary: 編輯收支紀錄
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionInput'
+      responses:
+        '200': { $ref: '#/components/schemas/TransactionResponse' }
+        '400': { $ref: '#/components/schemas/ErrorResponse' }
+        '404': { $ref: '#/components/schemas/ErrorResponse' }
+        '422': { $ref: '#/components/schemas/ErrorResponse' }
+    delete:
+      operationId: deleteTransaction
+      summary: 刪除收支紀錄
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { $ref: '#/components/schemas/SuccessResponse' }
+        '404': { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/accounts:
+    post:
+      operationId: createAccount
+      summary: 建立帳戶
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountInput'
+      responses:
+        '201': { $ref: '#/components/schemas/AccountResponse' }
+        '400': { $ref: '#/components/schemas/ErrorResponse' }
+    get:
+      operationId: listAccounts
+      summary: 查詢帳戶列表
+      responses:
+        '200': { $ref: '#/components/schemas/AccountListResponse' }
+
+  /api/categories:
+    post:
+      operationId: createCategory
+      summary: 建立分類
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryInput'
+      responses:
+        '201': { $ref: '#/components/schemas/CategoryResponse' }
+        '400': { $ref: '#/components/schemas/ErrorResponse' }
+    get:
+      operationId: listCategories
+      summary: 查詢分類列表
+      responses:
+        '200': { $ref: '#/components/schemas/CategoryListResponse' }
+
+  /api/reports/category-summary:
+    get:
+      operationId: getCategorySummary
+      summary: 查詢分類花費統計
+      parameters:
+        - name: startDate
+          in: query
+          required: true
+          schema: { type: string, format: date }
+        - name: endDate
+          in: query
+          required: true
+          schema: { type: string, format: date }
+      responses:
+        '200': { $ref: '#/components/schemas/CategorySummaryListResponse' }
+        '400': { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/reports/category-detail:
+    get:
+      operationId: getCategoryDetail
+      summary: 查詢分類花費明細
+      description: 點開報表某個分類時使用，回傳該分類、該期間內的收支紀錄明細列表（排除轉帳與收入），依日期新到舊排序；已結清代墊款交易仍回傳交易總金額，有效金額（總金額－代墊金額）的換算由前端或彙總 endpoint 負責，本 endpoint 只回傳原始交易列表
+      parameters:
+        - name: category
+          in: query
+          required: true
+          schema: { type: string }
+        - name: startDate
+          in: query
+          required: true
+          schema: { type: string, format: date }
+        - name: endDate
+          in: query
+          required: true
+          schema: { type: string, format: date }
+      responses:
+        '200': { $ref: '#/components/schemas/TransactionListResponse' }
+        '400': { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/net-worth:
+    get:
+      operationId: getNetWorth
+      summary: 查詢資產總覽
+      responses:
+        '200': { $ref: '#/components/schemas/NetWorthResponse' }
+
+  /api/net-worth/refresh:
+    post:
+      operationId: refreshNetWorth
+      summary: 刷新資產總覽（觸發向 stock_analyzer 抓即時股價並落地保存快照，非唯讀查詢；只給使用者主動要求更新時呼叫，例如資產頁下拉刷新）
+      responses:
+        '200': { $ref: '#/components/schemas/NetWorthResponse' }
+
+  /api/cloud-invoices/sync:
+    post:
+      operationId: syncCloudInvoices
+      summary: 同步雲端發票（批次）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items: { $ref: '#/components/schemas/CloudInvoiceSyncItem' }
+      responses:
+        '200': { $ref: '#/components/schemas/CloudInvoiceSyncResponse' }
+        '400': { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/cloud-invoices/pending:
+    get:
+      operationId: listPendingCloudInvoices
+      summary: 查詢待確認雲端發票清單
+      responses:
+        '200': { $ref: '#/components/schemas/CloudInvoicePendingListResponse' }
+
+  /api/cloud-invoices/{id}/confirm:
+    post:
+      operationId: confirmCloudInvoice
+      summary: 處理待確認雲端發票
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmCloudInvoiceInput'
+      responses:
+        '200': { $ref: '#/components/schemas/CloudInvoiceResponse' }
+        '404': { $ref: '#/components/schemas/ErrorResponse' }
+        '422': { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/cloud-invoices/health:
+    get:
+      operationId: getCloudInvoiceHealth
+      summary: 查詢雲端發票同步健康狀態
+      responses:
+        '200': { $ref: '#/components/schemas/CloudInvoiceHealthResponse' }
+
+  /api/recurring-transactions:
+    post:
+      operationId: createRecurringTransaction
+      summary: 建立固定收支規則
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecurringTransactionInput'
+      responses:
+        '201': { $ref: '#/components/schemas/RecurringTransactionResponse' }
+        '400': { $ref: '#/components/schemas/ErrorResponse' }
+        '404': { $ref: '#/components/schemas/ErrorResponse' }
+        '422': { $ref: '#/components/schemas/ErrorResponse' }
+    get:
+      operationId: listRecurringTransactions
+      summary: 查詢固定收支規則列表
+      responses:
+        '200': { $ref: '#/components/schemas/RecurringTransactionListResponse' }
+
+  /api/recurring-transactions/{id}:
+    put:
+      operationId: updateRecurringTransaction
+      summary: 編輯固定收支規則
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecurringTransactionInput'
+      responses:
+        '200': { $ref: '#/components/schemas/RecurringTransactionResponse' }
+        '400': { $ref: '#/components/schemas/ErrorResponse' }
+        '404': { $ref: '#/components/schemas/ErrorResponse' }
+        '422': { $ref: '#/components/schemas/ErrorResponse' }
+    delete:
+      operationId: deleteRecurringTransaction
+      summary: 刪除固定收支規則
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { $ref: '#/components/schemas/SuccessResponse' }
+        '404': { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/recurring-transactions/{id}/generate:
+    post:
+      operationId: generateRecurringTransaction
+      summary: 補生成固定收支交易
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { $ref: '#/components/schemas/GenerateRecurringTransactionResponse' }
+        '404': { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/budgets:
+    post:
+      operationId: createBudget
+      summary: 建立預算
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BudgetInput'
+      responses:
+        '201': { $ref: '#/components/schemas/BudgetResponse' }
+        '400': { $ref: '#/components/schemas/ErrorResponse' }
+        '404': { $ref: '#/components/schemas/ErrorResponse' }
+        '422': { $ref: '#/components/schemas/ErrorResponse' }
+    get:
+      operationId: listBudgets
+      summary: 查詢預算列表
+      responses:
+        '200': { $ref: '#/components/schemas/BudgetListResponse' }
+
+  /api/budgets/status:
+    get:
+      operationId: getBudgetStatus
+      summary: 查詢預算執行狀況
+      responses:
+        '200': { $ref: '#/components/schemas/BudgetStatusListResponse' }
+
+  /api/budgets/{id}:
+    put:
+      operationId: updateBudget
+      summary: 編輯預算
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BudgetUpdateInput'
+      responses:
+        '200': { $ref: '#/components/schemas/BudgetResponse' }
+        '400': { $ref: '#/components/schemas/ErrorResponse' }
+        '404': { $ref: '#/components/schemas/ErrorResponse' }
+    delete:
+      operationId: deleteBudget
+      summary: 刪除預算
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { $ref: '#/components/schemas/SuccessResponse' }
+        '404': { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/transfers:
+    post:
+      operationId: createTransfer
+      summary: 帳戶間轉帳
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransferInput'
+      responses:
+        '201': { $ref: '#/components/schemas/TransferResponse' }
+        '400': { $ref: '#/components/schemas/ErrorResponse' }
+        '404': { $ref: '#/components/schemas/ErrorResponse' }
+        '422': { $ref: '#/components/schemas/ErrorResponse' }
+
+components:
+  schemas:
+    TransactionType:
+      type: string
+      enum: [收入, 支出]
+
+    CategoryType:
+      type: string
+      enum: [收入, 支出, 皆可]
+
+    AccountType:
+      type: string
+      enum: [一般帳戶, 信用卡]
+
+    SyncStatus:
+      type: string
+      enum: [pending, synced, failed]
+
+    AdvancePaymentStatus:
+      type: string
+      enum: [pending, settled]
+      nullable: true
+      description: '僅 advancePaymentAmount 有值時有值；pending=尚未收到還款（amount 整筆計入支出）、settled=已收到還款（計入支出的有效金額變成 amount − advancePaymentAmount）'
+
+    TransactionInput:
+      type: object
+      required: [date, amount, categoryId, accountId, type]
+      properties:
+        date: { type: string, format: date }
+        amount: { type: number, minimum: 0, exclusiveMinimum: true }
+        categoryId: { type: integer }
+        accountId: { type: integer }
+        type: { $ref: '#/components/schemas/TransactionType' }
+        note: { type: string }
+        advancePaymentAmount: { type: number, minimum: 0, exclusiveMinimum: true, nullable: true, description: '這筆交易金額中屬於代墊款的部分；僅 type=支出 可設定，必須 ≤ amount，否則回傳 422。等於 amount 代表整筆都是代墊款。不提供或為 null 代表這筆交易不含代墊款成分' }
+
+    Transaction:
+      type: object
+      required: [id, date, amount, categoryId, accountId, type, isTransfer, syncStatus]
+      properties:
+        id: { type: integer }
+        date: { type: string, format: date }
+        amount: { type: number }
+        categoryId: { type: integer, nullable: true }
+        accountId: { type: integer }
+        type: { $ref: '#/components/schemas/TransactionType' }
+        note: { type: string, nullable: true }
+        isTransfer: { type: boolean }
+        transferGroupId: { type: string, nullable: true }
+        syncStatus: { $ref: '#/components/schemas/SyncStatus' }
+        cashPositionId: { type: integer, nullable: true }
+        advancePaymentAmount: { type: number, nullable: true }
+        advancePaymentStatus: { $ref: '#/components/schemas/AdvancePaymentStatus' }
+        settlementTransactionId: { type: integer, nullable: true }
+
+    TransactionResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data: { $ref: '#/components/schemas/Transaction' }
+
+    TransactionListResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Transaction' }
+
+    SettleAdvancePaymentInput:
+      type: object
+      required: [date, amount, accountId]
+      properties:
+        date: { type: string, format: date }
+        amount: { type: number, minimum: 0, exclusiveMinimum: true, description: '必須等於原代墊款交易的 advancePaymentAmount（代墊金額，不是交易總金額），只支援全額還款；預填代墊金額供使用者確認，仍要求使用者實際輸入才能送出' }
+        accountId: { type: integer, description: '還款入帳帳戶，無預設值，必填' }
+
+    SettleAdvancePaymentResult:
+      type: object
+      required: [settlementTransaction, advancePaymentTransaction]
+      properties:
+        settlementTransaction: { $ref: '#/components/schemas/Transaction' }
+        advancePaymentTransaction: { $ref: '#/components/schemas/Transaction' }
+
+    SettleAdvancePaymentResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data: { $ref: '#/components/schemas/SettleAdvancePaymentResult' }
+
+    AccountInput:
+      type: object
+      required: [name, type]
+      properties:
+        name: { type: string }
+        type: { $ref: '#/components/schemas/AccountType' }
+
+    Account:
+      type: object
+      required: [id, name, type, balance]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        type: { $ref: '#/components/schemas/AccountType' }
+        balance: { type: number }
+
+    AccountResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data: { $ref: '#/components/schemas/Account' }
+
+    AccountListResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Account' }
+
+    CategoryInput:
+      type: object
+      required: [name, type]
+      properties:
+        name: { type: string }
+        type: { $ref: '#/components/schemas/CategoryType' }
+
+    Category:
+      type: object
+      required: [id, name, type]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        type: { $ref: '#/components/schemas/CategoryType' }
+
+    CategoryResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data: { $ref: '#/components/schemas/Category' }
+
+    CategoryListResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Category' }
+
+    TransferInput:
+      type: object
+      required: [fromAccountId, toAccountId, amount, date]
+      properties:
+        fromAccountId: { type: integer }
+        toAccountId: { type: integer }
+        amount: { type: number, minimum: 0, exclusiveMinimum: true }
+        date: { type: string, format: date }
+
+    TransferResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items: { $ref: '#/components/schemas/Transaction' }
+
+    CategorySummary:
+      type: object
+      required: [category, totalAmount]
+      properties:
+        category: { type: string }
+        totalAmount: { type: number }
+
+    CategorySummaryListResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/CategorySummary' }
+
+    Currency:
+      type: string
+      enum: [TWD, USD]
+
+    StockDataStatus:
+      type: string
+      enum: [ok, failed]
+
+    StockHolding:
+      type: object
+      required: [currency, symbol, name, marketValue, unrealizedPnl]
+      properties:
+        currency: { $ref: '#/components/schemas/Currency' }
+        symbol: { type: string }
+        name: { type: string }
+        marketValue: { type: number }
+        unrealizedPnl: { type: number }
+
+    CurrencyTotal:
+      type: object
+      required: [currency, total]
+      properties:
+        currency: { $ref: '#/components/schemas/Currency' }
+        total: { type: number }
+
+    NetWorth:
+      type: object
+      required: [cashTotal, creditCardDebtTotal, stockHoldings, currencyTotals, stockDataStatus]
+      properties:
+        cashTotal: { type: number }
+        creditCardDebtTotal: { type: number }
+        stockHoldings:
+          type: array
+          items: { $ref: '#/components/schemas/StockHolding' }
+        currencyTotals:
+          type: array
+          items: { $ref: '#/components/schemas/CurrencyTotal' }
+        stockDataStatus: { $ref: '#/components/schemas/StockDataStatus' }
+
+    NetWorthResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data: { $ref: '#/components/schemas/NetWorth' }
+
+    CloudInvoiceStatus:
+      type: string
+      enum: [pending_review, synced, skipped]
+
+    CloudInvoiceSyncItem:
+      type: object
+      required: [invoiceNumber, invoiceDate, amount, sellerName]
+      properties:
+        invoiceNumber: { type: string }
+        invoiceDate: { type: string, format: date }
+        amount: { type: number, minimum: 0, exclusiveMinimum: true }
+        sellerName: { type: string }
+        itemSummary: { type: string }
+        categoryId: { type: integer, nullable: true, description: '選填。呼叫端（Hermes）對這筆發票的建議分類，僅在後端關鍵字分類器無法判斷時作為後備依據；後端關鍵字比對結果優先於此建議' }
+
+    CloudInvoiceSyncResultType:
+      type: string
+      enum: [created, pending_review, skipped, invalid]
+
+    CloudInvoiceSyncResult:
+      type: object
+      required: [invoiceNumber, result]
+      properties:
+        invoiceNumber: { type: string }
+        result: { $ref: '#/components/schemas/CloudInvoiceSyncResultType' }
+        transactionId: { type: integer, nullable: true }
+        errorMessage: { type: string, nullable: true }
+
+    CloudInvoiceSyncResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/CloudInvoiceSyncResult' }
+
+    SimilarTransaction:
+      type: object
+      required: [id, date, amount, note]
+      properties:
+        id: { type: integer }
+        date: { type: string, format: date }
+        amount: { type: number }
+        note: { type: string, nullable: true }
+
+    CloudInvoice:
+      type: object
+      required: [id, invoiceNumber, invoiceDate, amount, sellerName, status]
+      properties:
+        id: { type: integer }
+        invoiceNumber: { type: string }
+        invoiceDate: { type: string, format: date }
+        amount: { type: number }
+        sellerName: { type: string }
+        itemSummary: { type: string, nullable: true }
+        status: { $ref: '#/components/schemas/CloudInvoiceStatus' }
+        transactionId: { type: integer, nullable: true }
+        similarTransaction: { $ref: '#/components/schemas/SimilarTransaction' }
+
+    CloudInvoicePendingListResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/CloudInvoice' }
+
+    ConfirmCloudInvoiceDecision:
+      type: string
+      enum: [confirm_new, confirm_duplicate]
+
+    ConfirmCloudInvoiceInput:
+      type: object
+      required: [decision]
+      properties:
+        decision: { $ref: '#/components/schemas/ConfirmCloudInvoiceDecision' }
+        accountId: { type: integer }
+        categoryId: { type: integer }
+
+    CloudInvoiceResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data: { $ref: '#/components/schemas/CloudInvoice' }
+
+    CloudInvoiceHealth:
+      type: object
+      required: [hasSyncHistory, pendingCount, syncedCount, errorCount]
+      properties:
+        hasSyncHistory: { type: boolean }
+        lastSyncedAt: { type: string, format: date-time, nullable: true }
+        pendingCount: { type: integer }
+        syncedCount: { type: integer }
+        errorCount: { type: integer }
+
+    CloudInvoiceHealthResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data: { $ref: '#/components/schemas/CloudInvoiceHealth' }
+
+    RecurringFrequency:
+      type: string
+      enum: [每天, 每週, 每月, 每季, 每年, 每三年]
+
+    RecurringTransactionStatus:
+      type: string
+      enum: [啟用, 停用]
+
+    RecurringTransactionInput:
+      type: object
+      required: [frequency, amount, categoryId, accountId, type, startDate, generateCount]
+      properties:
+        frequency: { $ref: '#/components/schemas/RecurringFrequency' }
+        amount: { type: number, minimum: 0, exclusiveMinimum: true }
+        categoryId: { type: integer }
+        accountId: { type: integer }
+        type: { $ref: '#/components/schemas/TransactionType' }
+        note: { type: string }
+        startDate: { type: string, format: date }
+        generateCount: { type: integer, minimum: 0, exclusiveMinimum: true }
+
+    RecurringTransaction:
+      type: object
+      required: [id, frequency, amount, categoryId, accountId, type, startDate, generateCount, status]
+      properties:
+        id: { type: integer }
+        frequency: { $ref: '#/components/schemas/RecurringFrequency' }
+        amount: { type: number }
+        categoryId: { type: integer }
+        accountId: { type: integer }
+        type: { $ref: '#/components/schemas/TransactionType' }
+        note: { type: string, nullable: true }
+        startDate: { type: string, format: date }
+        generateCount: { type: integer }
+        status: { $ref: '#/components/schemas/RecurringTransactionStatus' }
+
+    RecurringTransactionResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data: { $ref: '#/components/schemas/RecurringTransaction' }
+
+    RecurringTransactionListResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/RecurringTransaction' }
+
+    GenerateRecurringTransactionResult:
+      type: object
+      required: [generatedCount, transactions]
+      properties:
+        generatedCount: { type: integer }
+        transactions:
+          type: array
+          items: { $ref: '#/components/schemas/Transaction' }
+
+    GenerateRecurringTransactionResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data: { $ref: '#/components/schemas/GenerateRecurringTransactionResult' }
+
+    BudgetScope:
+      type: string
+      enum: [總預算, 分類預算]
+
+    BudgetInput:
+      type: object
+      required: [scope, monthlyAmount]
+      properties:
+        scope: { $ref: '#/components/schemas/BudgetScope' }
+        categoryId: { type: integer, nullable: true }
+        monthlyAmount: { type: number, minimum: 0, exclusiveMinimum: true }
+
+    BudgetUpdateInput:
+      type: object
+      required: [monthlyAmount]
+      properties:
+        monthlyAmount: { type: number, minimum: 0, exclusiveMinimum: true }
+
+    Budget:
+      type: object
+      required: [id, scope, monthlyAmount]
+      properties:
+        id: { type: integer }
+        scope: { $ref: '#/components/schemas/BudgetScope' }
+        categoryId: { type: integer, nullable: true }
+        monthlyAmount: { type: number }
+
+    BudgetResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data: { $ref: '#/components/schemas/Budget' }
+
+    BudgetListResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Budget' }
+
+    BudgetStatus:
+      type: object
+      required: [id, scope, monthlyAmount, spent, remaining, isOverBudget]
+      properties:
+        id: { type: integer }
+        scope: { $ref: '#/components/schemas/BudgetScope' }
+        categoryId: { type: integer, nullable: true }
+        monthlyAmount: { type: number }
+        spent: { type: number }
+        remaining: { type: number }
+        isOverBudget: { type: boolean }
+
+    BudgetStatusListResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/BudgetStatus' }
+
+    SuccessResponse:
+      type: object
+      required: [success]
+      properties:
+        success: { type: boolean, enum: [true] }
+
+    ErrorResponse:
+      type: object
+      required: [success, error]
+      properties:
+        success: { type: boolean, enum: [false] }
+        error:
+          $ref: '#/components/schemas/Error'
+
+    Error:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }

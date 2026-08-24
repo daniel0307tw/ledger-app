@@ -1,0 +1,25 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Node / Next.js
+node_modules/
+web/.next/
+web/tsconfig.tsbuildinfo
+web/coverage/
+
+# 環境變數（範例檔留著，實際值不進版控）
+.env
+.env.*
+!.env.example
+!web/.env.example
+
+# 開發過程的暫存輸出
+pretty.output
+*.log
+
+# IDE / OS
+.DS_Store

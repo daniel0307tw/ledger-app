@@ -1,0 +1,41 @@
+%% ═══ 區段一：Activity 標頭與 Actor 宣告 ═══
+%% [ACTIVITY] 帳戶管理與轉帳
+%% [ACTOR] 使用者 -> {specs/actors/使用者.md}
+
+flowchart TD
+
+%% ═══ 區段二：節點定義 ═══
+
+    Start(( ))
+
+    %% [STEP:1] @使用者 {features/accounts/查詢帳戶列表.feature}
+    S1["@使用者<br/>查詢帳戶列表"]
+
+    %% [DECISION:1a] 使用者接下來要做什麼？
+    D1a{"使用者接下來要做什麼？"}
+
+    %% [BRANCH:1a:建立新帳戶] @使用者 {features/accounts/建立帳戶.feature}
+    B1a_create["@使用者<br/>建立帳戶"]
+
+    %% [BRANCH:1a:在帳戶間轉帳] @使用者 {features/accounts/帳戶間轉帳.feature}
+    B1a_transfer["@使用者<br/>帳戶間轉帳"]
+
+    %% [BRANCH:1a:僅檢視不操作]
+    B1a_view["僅檢視，不做任何操作"]
+
+    %% [MERGE:1a]
+    M1a(( ))
+
+    End((( )))
+
+%% ═══ 區段三：邊定義 ═══
+
+    Start --> S1
+    S1 --> D1a
+    D1a -- 建立新帳戶 --> B1a_create
+    D1a -- 在帳戶間轉帳 --> B1a_transfer
+    D1a -- 僅檢視不操作 --> B1a_view
+    B1a_create --> M1a
+    B1a_transfer --> M1a
+    B1a_view --> M1a
+    M1a --> End
