@@ -1,0 +1,93 @@
+%% ═══ 區段一：Activity 標頭與 Actor 宣告 ═══
+%% [ACTIVITY] 接收股票交易現金異動
+%% [ACTOR] stock_analyzer -> {specs/actors/stock_analyzer.md}
+
+flowchart TD
+
+%% ═══ 區段二：節點定義 ═══
+
+    Start(( ))
+
+    %% ─── 建立流程 ───
+
+    %% [STEP:1] @stock_analyzer {tests/features/cash-sync/接收股票交易建立記帳交易.feature}
+    S1["@stock_analyzer<br/>推送一筆現金異動：方向/金額/幣別/對應帳戶名稱"]
+
+    %% [DECISION:1a] 對應帳戶名稱是否存在於既有 account 表？
+    D1a{"對應帳戶名稱是否存在？"}
+
+    %% [BRANCH:1a:不存在] @stock_analyzer {tests/features/cash-sync/接收股票交易建立記帳交易.feature}
+    B1a_no["操作失敗，回應「找不到該帳戶」"]
+
+    %% [BRANCH:1a:存在] @stock_analyzer {tests/features/cash-sync/接收股票交易建立記帳交易.feature}
+    B1a_yes["建立 ledger_transaction：is_stock_sync=true、category_id=null、is_transfer=true<br/>（沿用既有 is_transfer=true 的報表/預算排除機制，實作成本最低；<br/>is_stock_sync 額外用於識別來源與更新/刪除時的安全檢查）"]
+
+    %% 說明：建立交易時跳過既有 sync_to_cash_position()（依據 Execution Plan 範圍決策 1，
+    %% 避免與 stock_analyzer 自身已寫入的 cash_position 重複）。此為內建邏輯，
+    %% 依 Actor 合法性規則收入 STEP:1 對應 Feature 的 Rule 中，不建立獨立節點/STEP 標記。
+
+    %% [STEP:3] @stock_analyzer {tests/features/cash-sync/接收股票交易建立記帳交易.feature}
+    S3["回傳這筆記帳交易的 id"]
+
+    M1(( ))
+
+    %% ─── 更新流程 ───
+
+    %% [STEP:4] @stock_analyzer {tests/features/cash-sync/接收股票交易更新記帳交易.feature}
+    S4["@stock_analyzer<br/>推送更新：交易 id + 新金額/方向"]
+
+    %% [DECISION:4a] 該 id 是否對應到一筆 is_stock_sync=true 的既有交易？
+    D4a{"id 是否對應到 is_stock_sync=true 的交易？"}
+
+    %% [BRANCH:4a:否(不存在或非stock_sync交易)] @stock_analyzer {tests/features/cash-sync/接收股票交易更新記帳交易.feature}
+    B4a_no["操作失敗，回應「找不到該筆交易」"]
+
+    %% [BRANCH:4a:是] @stock_analyzer {tests/features/cash-sync/接收股票交易更新記帳交易.feature}
+    B4a_yes["更新該筆交易的金額/方向（同樣不呼叫 sync_to_cash_position）"]
+
+    M4(( ))
+
+    %% ─── 刪除流程 ───
+
+    %% [STEP:5] @stock_analyzer {tests/features/cash-sync/接收股票交易刪除記帳交易.feature}
+    S5["@stock_analyzer<br/>推送刪除：交易 id"]
+
+    %% [DECISION:5a] 該 id 是否對應到一筆 is_stock_sync=true 的既有交易？
+    D5a{"id 是否對應到 is_stock_sync=true 的交易？"}
+
+    %% [BRANCH:5a:否] @stock_analyzer {tests/features/cash-sync/接收股票交易刪除記帳交易.feature}
+    B5a_no["操作失敗，回應「找不到該筆交易」"]
+
+    %% [BRANCH:5a:是] @stock_analyzer {tests/features/cash-sync/接收股票交易刪除記帳交易.feature}
+    B5a_yes["刪除該筆交易"]
+
+    M5(( ))
+
+    End((( )))
+
+%% ═══ 區段三：邊定義 ═══
+
+    Start --> S1
+    S1 --> D1a
+    D1a -- 不存在 --> B1a_no
+    D1a -- 存在 --> B1a_yes
+    B1a_no --> M1
+    B1a_yes --> S3
+    S3 --> M1
+    M1 --> End
+
+    Start --> S4
+    S4 --> D4a
+    D4a -- 否 --> B4a_no
+    D4a -- 是 --> B4a_yes
+    B4a_no --> M4
+    B4a_yes --> M4
+    M4 --> End
+
+    Start --> S5
+    S5 --> D5a
+    D5a -- 否 --> B5a_no
+    D5a -- 是 --> B5a_yes
+    B5a_no --> M5
+    B5a_yes --> M5
+    M5 --> End

@@ -4,7 +4,12 @@ from sqlalchemy import and_, case, func
 from sqlalchemy.orm import Session
 
 from app.models.category import Category
-from app.models.ledger_transaction import AdvancePaymentStatus, LedgerTransaction, SyncStatus, TransactionType
+from app.models.ledger_transaction import (
+    AdvancePaymentStatus,
+    LedgerTransaction,
+    SyncStatus,
+    TransactionType,
+)
 
 
 def _effective_amount():
@@ -15,7 +20,8 @@ def _effective_amount():
         (
             and_(
                 LedgerTransaction.advance_payment_amount.isnot(None),
-                LedgerTransaction.advance_payment_status == AdvancePaymentStatus.SETTLED,
+                LedgerTransaction.advance_payment_status
+                == AdvancePaymentStatus.SETTLED,
             ),
             LedgerTransaction.amount - LedgerTransaction.advance_payment_amount,
         ),
@@ -44,6 +50,8 @@ class TransactionRepository:
         advance_payment_amount=None,
         advance_payment_status: AdvancePaymentStatus | None = None,
         settlement_transaction_id: int | None = None,
+        is_stock_sync: bool = False,
+        currency: str = "TWD",
     ) -> LedgerTransaction:
         transaction = LedgerTransaction(
             date=date,
@@ -60,6 +68,8 @@ class TransactionRepository:
             advance_payment_amount=advance_payment_amount,
             advance_payment_status=advance_payment_status,
             settlement_transaction_id=settlement_transaction_id,
+            is_stock_sync=is_stock_sync,
+            currency=currency,
         )
         self.session.add(transaction)
         self.session.flush()
@@ -83,22 +93,32 @@ class TransactionRepository:
             .filter(
                 and_(
                     LedgerTransaction.advance_payment_amount.isnot(None),
-                    LedgerTransaction.advance_payment_status == AdvancePaymentStatus.PENDING,
+                    LedgerTransaction.advance_payment_status
+                    == AdvancePaymentStatus.PENDING,
                 )
             )
             .order_by(LedgerTransaction.date.desc(), LedgerTransaction.id.desc())
             .all()
         )
 
-    def find_by_range(self, start_date: date, end_date: date) -> list[LedgerTransaction]:
+    def find_by_range(
+        self, start_date: date, end_date: date
+    ) -> list[LedgerTransaction]:
         return (
             self.session.query(LedgerTransaction)
-            .filter(and_(LedgerTransaction.date >= start_date, LedgerTransaction.date <= end_date))
+            .filter(
+                and_(
+                    LedgerTransaction.date >= start_date,
+                    LedgerTransaction.date <= end_date,
+                )
+            )
             .order_by(LedgerTransaction.date.desc(), LedgerTransaction.id.desc())
             .all()
         )
 
-    def find_by_date_and_amount(self, target_date: date, amount) -> LedgerTransaction | None:
+    def find_by_date_and_amount(
+        self, target_date: date, amount
+    ) -> LedgerTransaction | None:
         return (
             self.session.query(LedgerTransaction)
             .filter(
@@ -119,7 +139,9 @@ class TransactionRepository:
             .count()
         )
 
-    def find_by_source_recurring_transaction(self, rule_id: int) -> list[LedgerTransaction]:
+    def find_by_source_recurring_transaction(
+        self, rule_id: int
+    ) -> list[LedgerTransaction]:
         return (
             self.session.query(LedgerTransaction)
             .filter(LedgerTransaction.source_recurring_transaction_id == rule_id)
@@ -127,9 +149,13 @@ class TransactionRepository:
             .all()
         )
 
-    def sum_amount_by_category_in_range(self, start_date: date, end_date: date) -> dict[int, float]:
+    def sum_amount_by_category_in_range(
+        self, start_date: date, end_date: date
+    ) -> dict[int, float]:
         rows = (
-            self.session.query(LedgerTransaction.category_id, func.sum(_effective_amount()))
+            self.session.query(
+                LedgerTransaction.category_id, func.sum(_effective_amount())
+            )
             .filter(
                 and_(
                     LedgerTransaction.date >= start_date,
@@ -164,7 +190,10 @@ class TransactionRepository:
 
     def sum_balance_by_account(self) -> dict[int, float]:
         signed_amount = case(
-            (LedgerTransaction.type == TransactionType.INCOME, LedgerTransaction.amount),
+            (
+                LedgerTransaction.type == TransactionType.INCOME,
+                LedgerTransaction.amount,
+            ),
             else_=-LedgerTransaction.amount,
         )
         rows = (
@@ -193,7 +222,9 @@ class TransactionRepository:
             .all()
         )
 
-    def sum_amount_by_category(self, start_date: date, end_date: date) -> list[tuple[str, float]]:
+    def sum_amount_by_category(
+        self, start_date: date, end_date: date
+    ) -> list[tuple[str, float]]:
         rows = (
             self.session.query(Category.name, func.sum(_effective_amount()))
             .join(Category, LedgerTransaction.category_id == Category.id)

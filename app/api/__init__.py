@@ -7,6 +7,7 @@ from app.api.cloud_invoices import router as cloud_invoices_router
 from app.api.net_worth import router as net_worth_router
 from app.api.recurring_transactions import router as recurring_transactions_router
 from app.api.reports import router as reports_router
+from app.api.stock_sync import router as stock_sync_router
 from app.api.transactions import router as transactions_router
 from app.api.transfers import router as transfers_router
 
@@ -20,3 +21,4 @@ router.include_router(transfers_router)
 router.include_router(cloud_invoices_router)
 router.include_router(recurring_transactions_router)
 router.include_router(budgets_router)
+router.include_router(stock_sync_router)

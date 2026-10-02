@@ -376,6 +376,52 @@ paths:
         '404': { $ref: '#/components/schemas/ErrorResponse' }
         '422': { $ref: '#/components/schemas/ErrorResponse' }
 
+  /api/stock-sync/transactions:
+    post:
+      operationId: createStockSyncTransaction
+      summary: 接收股票交易建立記帳交易（stock_analyzer 呼叫）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StockSyncTransactionInput'
+      responses:
+        '201': { $ref: '#/components/schemas/StockSyncTransactionResponse' }
+        '400': { $ref: '#/components/schemas/ErrorResponse' }
+        '404': { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/stock-sync/transactions/{id}:
+    put:
+      operationId: updateStockSyncTransaction
+      summary: 接收股票交易更新記帳交易（stock_analyzer 呼叫）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StockSyncTransactionUpdateInput'
+      responses:
+        '200': { $ref: '#/components/schemas/StockSyncTransactionResponse' }
+        '400': { $ref: '#/components/schemas/ErrorResponse' }
+        '404': { $ref: '#/components/schemas/ErrorResponse' }
+    delete:
+      operationId: deleteStockSyncTransaction
+      summary: 接收股票交易刪除記帳交易（stock_analyzer 呼叫）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { $ref: '#/components/schemas/SuccessResponse' }
+        '404': { $ref: '#/components/schemas/ErrorResponse' }
+
 components:
   schemas:
     TransactionType:
@@ -446,6 +492,45 @@ components:
         data:
           type: array
           items: { $ref: '#/components/schemas/Transaction' }
+
+    Currency:
+      type: string
+      enum: [TWD, USD]
+
+    StockSyncTransactionInput:
+      type: object
+      required: [direction, amount, currency, accountName]
+      properties:
+        direction: { $ref: '#/components/schemas/TransactionType' }
+        amount: { type: number, minimum: 0, exclusiveMinimum: true }
+        currency: { $ref: '#/components/schemas/Currency' }
+        accountName: { type: string, description: '對應既有 account.name，例如「永豐銀行」「新光銀行」；找不到時回傳 404「找不到該帳戶」' }
+
+    StockSyncTransactionUpdateInput:
+      type: object
+      required: [amount, direction]
+      properties:
+        amount: { type: number, minimum: 0, exclusiveMinimum: true }
+        direction: { $ref: '#/components/schemas/TransactionType' }
+
+    StockSyncTransaction:
+      type: object
+      required: [id, amount, currency, type, isStockSync, isTransfer, categoryId]
+      properties:
+        id: { type: integer }
+        amount: { type: number }
+        currency: { $ref: '#/components/schemas/Currency' }
+        type: { $ref: '#/components/schemas/TransactionType' }
+        isStockSync: { type: boolean, enum: [true] }
+        isTransfer: { type: boolean, enum: [true] }
+        categoryId: { type: integer, nullable: true, enum: [null] }
+
+    StockSyncTransactionResponse:
+      type: object
+      required: [success, data]
+      properties:
+        success: { type: boolean, enum: [true] }
+        data: { $ref: '#/components/schemas/StockSyncTransaction' }
 
     SettleAdvancePaymentInput:
       type: object

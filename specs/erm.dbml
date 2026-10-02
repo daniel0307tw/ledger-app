@@ -30,8 +30,10 @@ Table ledger_transaction {
   advance_payment_amount  decimal  [note: '這筆交易金額（amount）中屬於代墊款的部分，僅 type=支出 的交易可設定，必須 > 0 且 ≤ amount（等於 amount 時代表整筆都是代墊款，是這個欄位的特例，不需要另外的旗標）；null 代表這筆交易不含代墊款成分。取代早期設計中單純 boolean 的 is_advance_payment（該版本無法表達「一筆交易裡有一部分是自己的消費、一部分是幫別人代墊」這種混合情境，例如聚餐總額 4000、自己吃了 1000、代墊 3000）']
   advance_payment_status  advance_payment_status_enum  [note: '僅 advance_payment_amount 有值時有意義，pending=尚未收到還款（amount 整筆仍計入支出/預算/報表）、settled=已收到還款（計入支出/預算/報表的有效金額變成 amount − advance_payment_amount，不是排除整筆）；advance_payment_amount 為 null 的交易本欄位為 null']
   settlement_transaction_id  integer  [note: '指向「確認收到還款」時建立的那筆收入交易（ledger_transaction.id），金額固定等於 advance_payment_amount；僅 advance_payment_status=settled 時有值，比照 source_recurring_transaction_id 的單向 FK 模式（非 transfer_group_id 的無 FK 字串關聯，因為代墊款只需從支出這端查得到對應的還款交易，不需要反向查詢）']
+  is_stock_sync  boolean  [not null, default: false, note: '本輪新增（接收股票交易現金異動）：是否由 stock_analyzer 推送建立。true 時建立當下固定 is_transfer=true、category_id=null（比照轉帳模式排除報表/預算），且建立/更新/刪除一律不觸發既有 sync_to_cash_position()/cancel_previous_sync()（避免與 stock_analyzer 自身已寫入的 cash_position 重複計算）。更新/刪除此欄位=true 的交易前必須先驗證目標存在且 is_stock_sync=true，防止誤動使用者手動記帳的交易。']
+  currency       varchar  [not null, default: 'TWD', note: '本輪新增：交易幣別。既有一般收支交易固定為 TWD（沿用既有 cash_sync.py 的隱含假設，行為不變）；is_stock_sync=true 的交易依 stock_analyzer 推送的實際市場幣別可能為 TWD 或 USD。因 is_stock_sync=true 的交易同時 is_transfer=true，不計入報表/預算聚合，故此欄位不需要連動修改既有報表/預算查詢邏輯，範圍侷限於「記錄」而非「全系統多幣別運算」。']
 
-  Note: '收支紀錄；type 決定同步到 stock_analyzer CashPosition 時是 Withdraw 還是 Deposit'
+  Note: '收支紀錄；type 決定同步到 stock_analyzer CashPosition 時是 Withdraw 還是 Deposit（is_stock_sync=true 的交易例外，此路徑不觸發該同步）'
 }
 
 Table cloud_invoice {

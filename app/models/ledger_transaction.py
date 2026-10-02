@@ -1,8 +1,9 @@
 import enum
 from datetime import date as date_type
 
-from sqlalchemy import Boolean, Date, ForeignKey, Numeric, String
+from sqlalchemy import Boolean, Date
 from sqlalchemy import Enum as SAEnum
+from sqlalchemy import ForeignKey, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models import Base
@@ -30,17 +31,27 @@ class LedgerTransaction(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     date: Mapped[date_type] = mapped_column(Date, nullable=False)
     amount: Mapped[float] = mapped_column(Numeric(14, 4), nullable=False)
-    category_id: Mapped[int | None] = mapped_column(ForeignKey("category.id"), nullable=True)
+    category_id: Mapped[int | None] = mapped_column(
+        ForeignKey("category.id"), nullable=True
+    )
     note: Mapped[str | None] = mapped_column(String, nullable=True)
     account_id: Mapped[int] = mapped_column(ForeignKey("account.id"), nullable=False)
     type: Mapped[TransactionType] = mapped_column(
-        SAEnum(TransactionType, name="transaction_type", values_callable=lambda e: [m.value for m in e]),
+        SAEnum(
+            TransactionType,
+            name="transaction_type",
+            values_callable=lambda e: [m.value for m in e],
+        ),
         nullable=False,
     )
     is_transfer: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     transfer_group_id: Mapped[str | None] = mapped_column(String, nullable=True)
     sync_status: Mapped[SyncStatus] = mapped_column(
-        SAEnum(SyncStatus, name="sync_status_enum", values_callable=lambda e: [m.value for m in e]),
+        SAEnum(
+            SyncStatus,
+            name="sync_status_enum",
+            values_callable=lambda e: [m.value for m in e],
+        ),
         nullable=False,
         default=SyncStatus.PENDING,
     )
@@ -48,7 +59,9 @@ class LedgerTransaction(Base):
     source_recurring_transaction_id: Mapped[int | None] = mapped_column(
         ForeignKey("recurring_transaction.id", ondelete="SET NULL"), nullable=True
     )
-    advance_payment_amount: Mapped[float | None] = mapped_column(Numeric(14, 4), nullable=True)
+    advance_payment_amount: Mapped[float | None] = mapped_column(
+        Numeric(14, 4), nullable=True
+    )
     advance_payment_status: Mapped[AdvancePaymentStatus | None] = mapped_column(
         SAEnum(
             AdvancePaymentStatus,
@@ -62,3 +75,5 @@ class LedgerTransaction(Base):
     settlement_transaction_id: Mapped[int | None] = mapped_column(
         ForeignKey("ledger_transaction.id", ondelete="SET NULL"), nullable=True
     )
+    is_stock_sync: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    currency: Mapped[str] = mapped_column(String, nullable=False, default="TWD")

@@ -1,6 +1,6 @@
 # ledger-app
 
-個人記帳系統。FastAPI + Next.js 全端專案，用行為驅動開發（BDD／Gherkin）把每一條記帳規則都寫成可執行的規格，再串接一個獨立的投資日誌系統（[stock_analyzer](https://github.com/daniel0307tw/stock_analyzer)）把股票、現金一起算進總資產。
+個人記帳系統。FastAPI + Next.js 全端專案，用行為驅動開發（BDD／Gherkin）把每一條記帳規則都寫成可執行的規格，並整合兩個外部系統把記帳自動化：一邊是獨立的投資日誌系統 [stock_analyzer](https://github.com/daniel0307tw/stock_analyzer)（股票交易即時同步成現金異動、股票持倉即時估值），另一邊是自己架設的 AI agent **Hermes**（收據照片辨識、雲端發票比對分類，自動建立收支紀錄）。
 
 不是玩具專案的記帳 CRUD——重點在把「代墊款怎麼算」「哪些花費算進預算」這類容易口頭講清楚、實際寫規格卻很多陷阱的業務規則，用 BDD 收斂成無歧義、可回歸測試的規格，並在新增功能時系統性地檢查這些規則有沒有被正確套用到所有相關的地方（後端查詢、編輯邏輯、前端統計）。
 
@@ -11,8 +11,9 @@
 - **預算**：月度預算設定與執行狀況追蹤
 - **報表**：分類花費統計、分類明細鑽取（點分類看該分類底下每一筆交易）
 - **固定收支**：週期性交易規則
-- **雲端發票同步**：掃描同步資料夾裡的發票 CSV，自動建立收支紀錄，並用「關鍵字規則 → LLM 建議 → 預設分類」三層機制自動歸類
-- **資產總覽**：現金、信用卡、股票持倉一次看，股票現值可下拉刷新即時抓最新報價（串接 stock_analyzer 的唯讀 API）
+- **股票整合（stock_analyzer）**：雙向串接——① 使用者在 stock_analyzer 記錄一筆股票交易，若券商對應到現金帳戶，stock_analyzer 會即時推送現金異動，ledger-app 自動建立／更新／刪除對應的記帳交易（標記為 `isStockSync`，不計入一般報表，也不會跟既有的 CashPosition 反向同步機制互相觸發造成雙重寫入）；② 資產總覽頁下拉刷新即時抓 stock_analyzer 的股票持倉市值（唯讀 API），現金、信用卡、股票一次看
+- **Hermes agent 自動記帳**：自己部署的第三方 AI agent，代表使用者透過 API 直接寫入記帳紀錄，不是 ledger-app 內建邏輯——收到收據／發票照片（Telegram）時用 vision 辨識金額與商家，查有無相似金額的既有紀錄，確認不是重複才自動建立交易
+- **雲端發票同步**：掃描同步資料夾裡的發票 CSV，自動建立收支紀錄，並用「關鍵字規則 → Hermes（LLM）建議分類 → 預設分類」三層機制自動歸類
 
 ## 技術棧
 
@@ -28,7 +29,7 @@
 ```
 app/                後端：models / repositories / services / api（分層架構）
 web/                前端：Next.js App Router，src/app 為頁面、src/lib 為 API client + 型別
-specs/              erm.dbml（實體模型）、api.yml（API 契約）——皆由 .feature 規格推導產生
+specs/              erm.dbml（實體模型）、api.yml（API 契約）——皆由 .feature 規格推導產生；actors/ 記錄 stock_analyzer、Hermes 這類外部 Actor 的呼叫關係與邊界
 tests/features/     Gherkin 規格 + step definitions，behave 執行，唯一事實來源
 plans/              各功能開發時的執行計畫存檔（BDD spec → entity → API → TDD 的分階段紀錄）
 ```
@@ -74,5 +75,6 @@ npm run typecheck
 - **跨系統整合，同時考慮成本**：ledger-app 的資產頁需要即時股價，但股價 API 有速率限制／計費，串接另一個獨立系統（stock_analyzer）時明確把「使用者主動下拉才觸發」寫進設計，而不是預設進頁面就自動打 API。
 - **正確處理瀏覽器層級的細節**：手勢類 UI（下拉刷新）在 React 上有 passive event listener 的坑——用 JSX 掛 `onTouchMove` 呼叫 `preventDefault()` 在真機上會靜默失效，必須用原生 `addEventListener` 手動關掉 passive 才擋得住瀏覽器原生的下拉重整動作。
 - **營運安全意識**：本機測試前先檢查有沒有相同 port 的正式環境服務在跑（避免 port 衝突把正式服務打掉），資料修正一律透過應用層 API（而非直接改資料庫）以確保觸發到既有的業務邏輯與副作用。
+- **多 Actor 系統的規格設計**：除了人類使用者，stock_analyzer、Hermes 這兩個第三方系統都會直接呼叫 ledger-app 的 API 寫入資料；在 `specs/actors/` 把每個 Actor 的身分、呼叫方向、信任邊界（目前比照既有慣例，無認證層，靠網路邊界限制僅 127.0.0.1 可呼叫）寫清楚，並在 BDD 規格裡明確標記「這筆交易是誰建立的」（如 `isStockSync`），避免多個寫入來源互相觸發造成雙重同步。
 
 想看更完整的技能清單（含各項技能對應的具體案例），見 [`.claude/skills/`](.claude/skills/)。
