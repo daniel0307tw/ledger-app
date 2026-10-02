@@ -15,6 +15,18 @@
 - **Hermes agent 自動記帳**：自己部署的第三方 AI agent，代表使用者透過 API 直接寫入記帳紀錄，不是 ledger-app 內建邏輯——收到收據／發票照片（Telegram）時用 vision 辨識金額與商家，查有無相似金額的既有紀錄，確認不是重複才自動建立交易
 - **雲端發票同步**：掃描同步資料夾裡的發票 CSV，自動建立收支紀錄，並用「關鍵字規則 → Hermes（LLM）建議分類 → 預設分類」三層機制自動歸類
 
+## 畫面
+
+> 以下為另外起的隔離 demo 資料庫截圖（假帳戶／假交易／假持倉），不是正式環境的真實財務資料。
+
+| 行事曆 | 報表 |
+|---|---|
+| ![行事曆](docs/screenshots/calendar.png) | ![報表](docs/screenshots/reports.png) |
+
+| 預算 | 資產總覽（含股票整合） |
+|---|---|
+| ![預算](docs/screenshots/budgets.png) | ![資產總覽](docs/screenshots/assets.png) |
+
 ## 技術棧
 
 | 層 | 技術 |
